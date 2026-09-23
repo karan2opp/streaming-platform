@@ -1,0 +1,40 @@
+// Prisma schema for Video Streaming & Upload Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  auth0Id   String?  @unique
+  email     String?
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  videos    Video[]
+}
+
+model Video {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  ikFileId     String   // ImageKit File ID
+  url          String   // Direct Video URL
+  thumbnailUrl String   // Dynamic or Default Thumbnail URL
+  hlsUrl       String?  // HLS Manifest (.m3u8) URL for streaming
+  duration     Float    @default(0)
+  views        Int      @default(0)
+  status       String   @default("READY") // PENDING, PROCESSING, READY, FAILED
+  category     String   @default("General")
+  tags         String[] @default([])
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
