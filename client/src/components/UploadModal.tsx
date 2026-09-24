@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { X, UploadCloud, Film, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { apiClient } from '../api/apiClient';
 import type { ImageKitAuthParams, Video } from '../types/video';
@@ -62,7 +63,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       setUploadProgress(30);
       setStatusMessage('Uploading video directly to ImageKit CDN...');
 
-      // 2. Direct upload to ImageKit endpoint via XMLHttpRequest for progress tracking
+      // 2. Direct upload to ImageKit endpoint via Axios with live progress tracking
       const formData = new FormData();
       formData.append('file', file);
       formData.append('fileName', file.name);
@@ -73,33 +74,21 @@ export const UploadModal: React.FC<UploadModalProps> = ({
       formData.append('useUniqueFileName', 'true');
       formData.append('folder', '/videos');
 
-      const ikResponse: any = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://upload.imagekit.io/api/v1/files/upload');
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round(30 + (event.loaded / event.total) * 50);
-            setUploadProgress(percent);
-          }
-        };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(JSON.parse(xhr.responseText));
-          } else {
-            try {
-              const err = JSON.parse(xhr.responseText);
-              reject(new Error(err.message || 'ImageKit upload failed'));
-            } catch {
-              reject(new Error(`Upload failed with status ${xhr.status}`));
+      const ikRes = await axios.post(
+        'https://upload.imagekit.io/api/v1/files/upload',
+        formData,
+        {
+          onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
+              const percent = Math.round(30 + (progressEvent.loaded / progressEvent.total) * 50);
+              setUploadProgress(percent);
             }
-          }
-        };
+          },
+        }
+      );
 
-        xhr.onerror = () => reject(new Error('Network error during file upload'));
-        xhr.send(formData);
-      });
+      const ikResponse = ikRes.data;
+
 
       setUploadProgress(85);
       setStatusMessage('Saving metadata in PostgreSQL database...');
