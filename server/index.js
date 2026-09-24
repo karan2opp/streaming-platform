@@ -4,6 +4,7 @@ import { auth } from "express-oauth2-jwt-bearer";
 import dotenv from "dotenv";
 import { ApiResponse } from "./common/Api_Response.js";
 import videoRoutes from "./module/video/videoRoutes.js";
+import webhookRoutes from "./module/webhook/webhookRoutes.js";
 dotenv.config();
 const app = express();
 // Enable CORS for frontend (http://localhost:5173)
@@ -26,6 +27,8 @@ app.get("/health", (req, res) => {
 });
 // Video routes (Upload auth, Feed listing, Video persistence)
 app.use("/api/videos", videoRoutes);
+// Webhook routes (ImageKit webhooks & status triggers)
+app.use("/api/webhooks", webhookRoutes);
 // Protected route using standard ApiResponse
 app.get("/api/protected", checkJwt, (req, res) => {
     const response = new ApiResponse(200, { auth: req.auth }, "Access granted!");

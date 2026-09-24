@@ -42,9 +42,41 @@ export function App() {
     return () => clearTimeout(timer);
   }, [fetchVideos]);
 
+  // SSE Real-Time Event Listener for Video Status Updates (Webhooks)
+  useEffect(() => {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+    const eventSource = new EventSource(`${baseUrl}/api/videos/events`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'VIDEO_STATUS_UPDATED' || payload.type === 'VIDEO_CREATED') {
+          const updatedVideo: Video = payload.data;
+          setVideos((prevVideos) => {
+            const index = prevVideos.findIndex((v) => v.id === updatedVideo.id);
+            if (index !== -1) {
+              const newArr = [...prevVideos];
+              newArr[index] = updatedVideo;
+              return newArr;
+            } else {
+              return [updatedVideo, ...prevVideos];
+            }
+          });
+        }
+      } catch (err) {
+        console.error('[SSE Error]', err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
+
   const handleVideoUploaded = (newVideo: Video) => {
     setVideos((prev) => [newVideo, ...prev]);
   };
+
 
   return (
     <div style={{ minHeight: '100vh', paddingBottom: '4rem' }}>

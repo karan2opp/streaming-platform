@@ -3,6 +3,14 @@ import { getUploadAuthParams } from "../../common/imagekit.js";
 import { prisma } from "../../common/db.js";
 import { ApiResponse } from "../../common/Api_Response.js";
 import { ApiError } from "../../common/Api_Errot.js";
+import { sseService } from "../../common/sseService.js";
+/**
+ * Subscribe to Server-Sent Events (SSE) for real-time video processing status updates
+ */
+export const subscribeVideoEvents = (req, res) => {
+    const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    sseService.addClient(clientId, res);
+};
 /**
  * Get ImageKit HMAC authentication signatures for direct client upload
  */
@@ -26,7 +34,7 @@ export const getUploadAuth = async (req, res) => {
  */
 export const createVideo = async (req, res) => {
     try {
-        const { title, description, ikFileId, url, thumbnailUrl, hlsUrl, duration, category, tags } = req.body;
+        const { title, description, ikFileId, url, thumbnailUrl, hlsUrl, duration, category, tags, status } = req.body;
         if (!title || !ikFileId || !url) {
             throw new ApiError(400, "Missing required fields: title, ikFileId, and url are required");
         }
@@ -44,9 +52,11 @@ export const createVideo = async (req, res) => {
                 duration: duration ? parseFloat(duration) : 0,
                 category: category || "General",
                 tags: Array.isArray(tags) ? tags : [],
-                status: "READY",
+                status: status || "PROCESSING", // Initial state is PROCESSING until ImageKit Webhook fires
             },
         });
+        // Broadcast new video processing event via SSE
+        sseService.broadcast("VIDEO_CREATED", video);
         const response = new ApiResponse(201, video, "Video metadata saved successfully");
         res.status(201).json(response);
     }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Eye, Clock } from 'lucide-react';
+import { Play, Eye, Clock, Loader2, AlertTriangle } from 'lucide-react';
 import type { Video } from '../types/video';
 
 
@@ -10,6 +10,8 @@ interface VideoCardProps {
 
 export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const isProcessing = video.status === 'PROCESSING' || video.status === 'PENDING';
+  const isFailed = video.status === 'FAILED';
 
   // Format duration into MM:SS
   const formatDuration = (seconds: number) => {
@@ -37,17 +39,23 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
     return `${video.url}/tr:so-2,w-600,h-340`;
   };
 
+  const handleCardClick = () => {
+    if (isProcessing) return; // Prevent playing while transcoding
+    onClick(video);
+  };
+
   return (
     <div
       className="glass-card"
       style={{
         overflow: 'hidden',
-        cursor: 'pointer',
+        cursor: isProcessing ? 'not-allowed' : 'pointer',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
+        opacity: isProcessing ? 0.85 : 1,
       }}
-      onClick={() => onClick(video)}
+      onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -69,65 +77,107 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+            transform: isHovered && !isProcessing ? 'scale(1.05)' : 'scale(1)',
             transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            filter: isProcessing ? 'blur(2px) brightness(0.6)' : 'none',
           }}
           onError={(e) => {
-            // Fallback image if frame extraction fails
             (e.target as HTMLImageElement).src = 'https://ik.imagekit.io/ikmedia/blog/hero-image.jpg?tr=w-600,h-340';
           }}
         />
 
-        {/* Hover Play Overlay */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundColor: isHovered ? 'rgba(9, 13, 22, 0.45)' : 'transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'background-color 0.2s ease',
-        }}>
+        {/* Processing State Overlay */}
+        {isProcessing ? (
           <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(139, 92, 246, 0.9)',
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(9, 13, 22, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            color: '#a78bfa',
+          }}>
+            <Loader2 style={{ width: '32px', height: '32px', animation: 'spin 1s linear infinite' }} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.02em' }}>
+              Processing Transcode...
+            </span>
+          </div>
+        ) : isFailed ? (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(239, 68, 68, 0.3)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            transform: isHovered ? 'scale(1)' : 'scale(0.8)',
-            opacity: isHovered ? 1 : 0,
-            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-            boxShadow: '0 8px 24px rgba(139, 92, 246, 0.5)',
+            color: '#fca5a5',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            gap: '0.4rem',
           }}>
-            <Play style={{ width: '22px', height: '22px', color: '#fff', marginLeft: '3px' }} />
+            <AlertTriangle style={{ width: '20px', height: '20px' }} />
+            <span>Transcode Failed</span>
           </div>
-        </div>
+        ) : (
+          /* Hover Play Overlay for Ready Videos */
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: isHovered ? 'rgba(9, 13, 22, 0.45)' : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'background-color 0.2s ease',
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(139, 92, 246, 0.9)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transform: isHovered ? 'scale(1)' : 'scale(0.8)',
+              opacity: isHovered ? 1 : 0,
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+              boxShadow: '0 8px 24px rgba(139, 92, 246, 0.5)',
+            }}>
+              <Play style={{ width: '22px', height: '22px', color: '#fff', marginLeft: '3px' }} />
+            </div>
+          </div>
+        )}
 
         {/* Duration Badge */}
-        <div style={{
-          position: 'absolute',
-          bottom: '0.65rem',
-          right: '0.65rem',
-          backgroundColor: 'rgba(9, 13, 22, 0.85)',
-          backdropFilter: 'blur(6px)',
-          color: '#fff',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          padding: '0.2rem 0.5rem',
-          borderRadius: '6px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-        }}>
-          {formatDuration(video.duration)}
-        </div>
+        {!isProcessing && (
+          <div style={{
+            position: 'absolute',
+            bottom: '0.65rem',
+            right: '0.65rem',
+            backgroundColor: 'rgba(9, 13, 22, 0.85)',
+            backdropFilter: 'blur(6px)',
+            color: '#fff',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            padding: '0.2rem 0.5rem',
+            borderRadius: '6px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}>
+            {formatDuration(video.duration)}
+          </div>
+        )}
 
-        {/* Category Badge */}
+        {/* Status / Category Badge */}
         <div style={{
           position: 'absolute',
           top: '0.65rem',
           left: '0.65rem',
-          backgroundColor: 'rgba(139, 92, 246, 0.85)',
+          backgroundColor: isProcessing
+            ? 'rgba(234, 179, 8, 0.9)'
+            : 'rgba(139, 92, 246, 0.85)',
           backdropFilter: 'blur(6px)',
           color: '#fff',
           fontSize: '0.7rem',
@@ -136,8 +186,18 @@ export const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
           borderRadius: '6px',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.3rem',
         }}>
-          {video.category}
+          {isProcessing ? (
+            <>
+              <Loader2 style={{ width: '12px', height: '12px', animation: 'spin 1s linear infinite' }} />
+              <span>Transcoding</span>
+            </>
+          ) : (
+            video.category
+          )}
         </div>
       </div>
 

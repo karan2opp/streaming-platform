@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { ApiResponse } from "./common/Api_Response.js";
 
 import videoRoutes from "./module/video/videoRoutes.js";
+import webhookRoutes from "./module/webhook/webhookRoutes.js";
 
 dotenv.config();
 
@@ -34,6 +35,10 @@ app.get("/health", (req: Request, res: Response) => {
 
 // Video routes (Upload auth, Feed listing, Video persistence)
 app.use("/api/videos", videoRoutes);
+
+// Webhook routes (ImageKit webhooks & status triggers)
+app.use("/api/webhooks", webhookRoutes);
+
 
 // Protected route using standard ApiResponse
 app.get("/api/protected", checkJwt, (req: Request, res: Response) => {

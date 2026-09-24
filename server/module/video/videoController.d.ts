@@ -1,5 +1,9 @@
 import { type Request, type Response } from "express";
 /**
+ * Subscribe to Server-Sent Events (SSE) for real-time video processing status updates
+ */
+export declare const subscribeVideoEvents: (req: Request, res: Response) => void;
+/**
  * Get ImageKit HMAC authentication signatures for direct client upload
  */
 export declare const getUploadAuth: (req: Request, res: Response) => Promise<void>;
